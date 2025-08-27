@@ -105,6 +105,7 @@ npm i next@latest react@latest react-dom@latest
   }
 }
 ```
+<img src="img/스크린샷 2025-08-27 120634.png" alt="수동 설치하는 중">
 
 ---
 
