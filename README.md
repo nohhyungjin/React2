@@ -1,4 +1,92 @@
 # 202130113 노형진
+## 2025-09-03 2주차
+
+**부트스트랩(Bootstrap)**
+
+* 오픈 소스 프론트엔드 프레임워크
+* HTML, CSS, JavaScript 기반
+* 반응형 레이아웃 지원
+* 그리드 시스템 제공
+* 버튼, 카드, 네비게이션 바 등 UI 컴포넌트 제공
+* 일관된 디자인 구현 가능
+* 커스터마이징 용이
+* 빠른 프로토타이핑 적합
+
+---
+
+**Core Web Vitals**
+
+* 구글이 정의한 웹사이트 사용자 경험 측정 지표
+* 페이지 속도, 반응성, 시각적 안정성 평가
+
+주요 항목
+
+* **LCP (Largest Contentful Paint)**: 주요 콘텐츠가 로드되는 속도
+
+* **FID (First Input Delay)**: 사용자 입력에 대한 첫 반응 속도
+
+* **CLS (Cumulative Layout Shift)**: 예기치 않은 레이아웃 이동 정도
+
+* 검색 순위에 직접적 영향
+
+* 사용자 만족도와 이탈률에 큰 관련
+
+---
+
+**Next.js `src` 디렉토리**
+
+* 루트에 `src/` 생성 가능
+* `src/pages`, `src/app` 자동 인식
+* 설정 필요 없음
+* 소스 코드와 설정 파일 분리
+* 프로젝트 구조 깔끔하게 유지
+
+---
+
+`eslintrc.json`
+
+* 기존 방식 (레거시)
+* JSON, YAML, JS 형식 지원
+* 계층적 설정 가능 (프로젝트 루트 + 하위 폴더)
+* 오래된 플러그인/가이드에서 주로 사용
+
+`eslint.config.mjs`
+
+* 새로운 방식 (Flat Config)
+* ES Module 기반 (`.mjs`, `.js`)
+* 배열 형태로 설정 → 직관적
+* 계층적 머지 대신 명시적 구성
+* 최신 ESLint 버전에서 권장
+
+---
+
+### `eslint.config.mjs`와 Next.js
+
+* Next.js 13 이후 → ESLint 기본 지원
+* 새로운 Flat Config(`eslint.config.mjs`) 방식과 호환
+* 프로젝트 루트에 `eslint.config.mjs` 작성 가능
+* Next.js 플러그인(`next/core-web-vitals`) 불러와 적용
+* 목적: 최신 ESLint 규칙을 Next.js 환경에 맞게 적용
+
+---
+
+### Hard Link
+
+* 같은 파일에 대한 또 다른 이름
+* 동일한 inode 번호 공유
+* 원본 삭제해도 다른 링크는 파일 유지
+* 같은 파일 시스템 내에서만 생성 가능
+
+### Symbolic Link (Soft Link)
+
+* 원본 파일 경로를 가리키는 별도 파일
+* 다른 inode 사용
+* 원본 삭제 시 링크 깨짐
+* 다른 파일 시스템에도 생성 가능
+
+---
+
+
 ## 2025-08-27 1주차
 ### Getting Started
 
