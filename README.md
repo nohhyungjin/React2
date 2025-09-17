@@ -1,4 +1,169 @@
 # 202130113 노형진
+## 2025-09-17 4주차
+
+### Layouts & Pages
+
+#### 1. Pages
+
+* **Page 정의**: 특정 라우트에서 렌더링되는 UI.
+* **생성 방법**: `app` 디렉토리에 `page.tsx` 생성 후 React 컴포넌트 default export.
+
+```tsx
+// app/page.tsx
+export default function Page() {
+  return <h1>Hello Next.js!</h1>
+}
+```
+
+---
+
+#### 2. Layouts
+
+* **Layout 정의**: 여러 페이지에서 공유되는 UI.
+* **특징**: 네비게이션 시 상태 유지, 인터랙션 유지, 리렌더링 없음.
+* **Root Layout**: `app/layout.tsx`는 필수이며 `<html>`, `<body>` 포함.
+
+```tsx
+// app/layout.tsx
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>
+        <main>{children}</main>
+      </body>
+    </html>
+  )
+}
+```
+
+* **Nested Layouts**: 폴더별로 `layout.tsx` 추가 시 상위 → 하위로 중첩
+
+---
+
+#### 3. Nested Routes
+
+* **폴더 = URL 세그먼트**
+* **page.tsx = 해당 세그먼트의 UI**
+* 예시: `/blog` → `app/blog/page.tsx`
+
+```tsx
+// app/blog/page.tsx
+export default async function Page() {
+  const posts = await getPosts()
+  return (
+    <ul>
+      {posts.map((post) => (
+        <Post key={post.id} post={post} />
+      ))}
+    </ul>
+  )
+}
+```
+
+* `/blog/[slug]` → 동적 라우트 (폴더명에 대괄호 사용)
+
+```tsx
+// app/blog/[slug]/page.tsx
+export default function Page() {
+  return <h1>Hello, Blog Post Page!</h1>
+}
+```
+
+---
+
+#### 4. Dynamic Segments
+
+* **형식**: `[slug]`, `[id]` 등
+* **데이터 기반으로 여러 페이지 자동 생성**
+
+```tsx
+// app/blog/[slug]/page.tsx
+export default async function BlogPostPage({ params }: { params: { slug: string } }) {
+  const post = await getPost(params.slug)
+  return (
+    <div>
+      <h1>{post.title}</h1>
+      <p>{post.content}</p>
+    </div>
+  )
+}
+```
+
+좋습니다 👍 지금 4주차 정리 문서에 **Dynamic Segments → slug** 부분을 조금 더 확장하면 이해하기 훨씬 쉬워질 거예요.
+slug는 블로그, 상품 상세, 사용자 프로필 등 **데이터 기반 동적 페이지**에서 가장 자주 쓰이는 개념이니까요.
+
+아래처럼 보완 내용을 추가해보면 어떨까요?
+
+---
+
+##### slug란?
+
+* **slug 정의**: URL에서 특정 자원을 구분하기 위해 사용되는 문자열
+  예: `/blog/nextjs-routing-guide` → `nextjs-routing-guide`가 slug
+* **용도**: DB의 id나 title을 기반으로 URL-friendly 문자열을 생성해 **가독성 좋고 SEO 친화적**인 경로 제공
+
+---
+
+##### slug 생성 예시
+
+* 데이터 (DB)
+
+  ```json
+  {
+    "id": 1,
+    "title": "Next.js Routing Guide",
+    "content": "..."
+  }
+  ```
+* slug 변환: `"Next.js Routing Guide"` → `"nextjs-routing-guide"`
+* 최종 URL: `/blog/nextjs-routing-guide`
+
+---
+
+##### getStaticPaths / generateStaticParams와 slug
+
+Next.js에서 slug 기반 페이지를 미리 생성하려면 사용:
+
+```tsx
+// app/blog/[slug]/page.tsx
+import { getPosts, getPost } from '@/lib/posts'
+
+export async function generateStaticParams() {
+  const posts = await getPosts()
+  return posts.map((post) => ({ slug: post.slug }))
+}
+
+export default async function BlogPostPage({ params }: { params: { slug: string } }) {
+  const post = await getPost(params.slug)
+  return <h1>{post.title}</h1>
+}
+```
+
+---
+
+##### slug 장점
+
+* **SEO 최적화**: URL에 의미 있는 키워드 포함 가능
+* **가독성**: 숫자 ID보다 직관적 (예: `/blog/42` vs `/blog/nextjs-routing-guide`)
+* **데이터 매핑**: DB 쿼리 시 `slug`를 key로 사용 가능
+
+
+---
+
+#### 5. Search Params
+
+* **서버 컴포넌트**: `searchParams` prop 사용 (동적 렌더링)
+* **클라이언트 컴포넌트**: `useSearchParams` hook 사용
+
+```tsx
+// Server Component
+export default async function Page({ searchParams }: { searchParams: { [key: string]: string } }) {
+  const filters = searchParams.filters
+}
+```
+
+---
+
 ## 2025-09-10 3주차
 ### 프로젝트 구조
 #### 폴더 및 파일 규칙
