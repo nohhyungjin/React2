@@ -1,4 +1,126 @@
 # 202130113 노형진
+## 2025-09-24 5주차
+#### 6. Linking Between Pages
+
+* **기본 내비게이션 방식**: `<Link>` 컴포넌트
+* **특징**: 프리페칭 + 클라이언트 내비게이션
+
+```tsx
+import Link from 'next/link'
+
+export default function PostList({ posts }) {
+  return (
+    <ul>
+      {posts.map((post) => (
+        <li key={post.slug}>
+          <Link href={`/blog/${post.slug}`}>{post.title}</Link>
+        </li>
+      ))}
+    </ul>
+  )
+}
+```
+
+---
+
+#### 7. Route Props Helpers
+
+* **PageProps**: 페이지 컴포넌트 props (`params`, `searchParams`)
+* **LayoutProps**: 레이아웃 컴포넌트 props (`children`, named slots)
+
+```tsx
+// app/blog/[slug]/page.tsx
+export default async function Page(props: PageProps<'/blog/[slug]'>) {
+  const { slug } = props.params
+  return <h1>Blog post: {slug}</h1>
+}
+```
+
+---
+
+
+#####  React vs Next.js 라우팅 비교
+
+| 구분                | **React (CRA 기준)**                                | **Next.js**                                            |
+| ----------------- | ------------------------------------------------- | ------------------------------------------------------ |
+| **라우팅 기본 방식**     | 내장 라우터 없음 → `react-router-dom` 등 외부 라이브러리 필요      | **파일 시스템 기반 라우팅** (폴더/파일 구조 = URL 구조)                  |
+| **설정 방법**         | `BrowserRouter`, `Routes`, `Route` 컴포넌트로 직접 정의    | `app` 디렉토리 안에 `page.tsx` 파일 추가 시 자동 라우팅                |
+| **동적 라우트**        | `<Route path="/users/:id">` 같은 패턴 사용              | `[id]` 폴더명 사용 (`/users/[id]/page.tsx`)                 |
+| **중첩 라우트**        | `<Route>` 안에 `<Route>` 중첩                         | 폴더 중첩으로 구현 (`/dashboard/settings`)                     |
+| **Layout 구성**     | 별도 컴포넌트 만들어 각 페이지에서 불러와야 함                        | `layout.tsx` 파일로 라우트별 레이아웃 자동 적용, 중첩 지원                |
+| **링크 이동**         | `<Link to="/about">About</Link>`                  | `<Link href="/about">About</Link>` (프리페칭 자동 지원)        |
+| **코드 분할**         | `React.lazy`, `Suspense` 직접 설정 필요                 | 라우트 단위 코드 스플리팅 자동                                      |
+| **SSR/SSG**       | 기본 지원 없음 (추가 라이브러리 필요)                            | 내장 지원 (`getServerSideProps`, `generateStaticParams` 등) |
+| **검색 파라미터**       | `useParams`, `useSearchParams` (react-router-dom) | `searchParams` prop (서버) / `useSearchParams` (클라이언트)   |
+| **라우트 보호 (Auth)** | `PrivateRoute` 같은 커스텀 HOC 작성                      | Middleware 또는 layout 단에서 제어 가능                         |
+
+---
+
+##### Next.js Pages Router vs App Router 비교
+
+| 구분           | **Pages Router (`/pages`)**                                                                  | **App Router (`/app`)**                                                 |
+| ------------ | -------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| **도입 시기**    | Next.js 초기부터 존재 (Next.js 12까지 기본)                                                            | Next.js 13에서 도입 (13\~14에서 안정화)                                          |
+| **라우팅 방식**   | **파일 기반 라우팅**: `pages/index.tsx → /`, `pages/blog/[id].tsx → /blog/:id`                      | **폴더 기반 라우팅**: `app/page.tsx → /`, `app/blog/[id]/page.tsx → /blog/:id` |
+| **렌더링 모델**   | 기본적으로 **Client-Side Rendering(CSR)** 중심, SSR/SSG는 `getServerSideProps`, `getStaticProps`로 처리 | **Server Components 기본 지원** → 서버에서 실행되는 컴포넌트와 클라이언트 컴포넌트를 명확히 구분        |
+| **데이터 패칭**   | `getServerSideProps`, `getStaticProps`, `getInitialProps`                                    | `async function` 직접 사용 가능, `fetch()`가 서버에서 자동 캐싱/최적화                    |
+| **레이아웃**     | 별도의 `_app.tsx`, `_document.tsx` 파일로 전체 레이아웃 구성                                               | **`layout.tsx` 파일**로 라우트별, 중첩 레이아웃을 자동 지원                               |
+| **중첩 라우팅**   | 지원 없음 → 각 페이지마다 공통 UI를 직접 포함해야 함                                                             | 지원 → 상위 `layout.tsx`가 하위 라우트들을 감싸는 구조                                   |
+| **코드 스플리팅**  | 페이지 단위 자동 분리                                                                                 | 페이지 + 레이아웃 단위까지 세분화된 자동 코드 스플리팅                                         |
+| **라우트 그룹**   | 지원 없음                                                                                        | `(folder)` 형식으로 URL에 영향 없이 구조화 가능                                       |
+| **에러/로딩 처리** | 글로벌 `_error.tsx`만 가능                                                                         | **`error.tsx`, `loading.tsx`, `not-found.tsx`** 등 라우트 단위 처리 가능          |
+| **점진적 채택**   | Next.js 13 이상에서도 계속 사용 가능                                                                    | 권장 방식 (Next.js 팀의 미래 지향적 기본)                                            |
+
+
+---
+
+### Next.js Linking & Navigating
+
+#### 1. 네비게이션 동작 원리
+
+* **Server Rendering**
+
+  * 기본적으로 페이지와 레이아웃은 **React Server Component**로 동작
+  * 서버에서 **Server Component Payload**를 생성해 클라이언트로 전송
+  * 두 가지 방식
+
+    * **Static Rendering (Prerendering)** → 빌드 타임/재검증 시 캐싱
+    * **Dynamic Rendering** → 요청 시마다 서버에서 생성
+  * 단점: 클라이언트는 서버 응답을 기다려야 함
+
+* **Prefetching**
+
+  * `<Link>` 컴포넌트 사용 시 뷰포트에 들어오면 자동으로 **백그라운드 로딩**
+  * **Static Route** → 전체 미리 불러옴
+  * **Dynamic Route** → 스킵하거나 부분적(prefetch + `loading.tsx`)
+
+* **Streaming**
+
+  * 서버가 **준비된 부분부터 점진적으로 전송**
+  * 사용자 입장에서 로딩 UI(스켈레톤)를 빠르게 보여주어 즉각 반응성을 제공
+  * `loading.tsx`를 만들어서 활용
+  * Next.js가 내부적으로 `<Suspense>` 처리 → 로딩 UI 먼저 보여주고, 이후 실제 콘텐츠 교체
+
+* **Client-side transitions**
+
+  * `<Link>`를 통한 네비게이션은 클라이언트에서 빠르게 처리
+  * 서버 응답을 기다리는 지연을 최소화
+
+---
+
+##### 장점
+
+* **빠른 탐색 경험**
+  → 프리패칭 + 클라이언트 전환 덕분에 즉각적 반응
+* **느린 네트워크에서도 개선된 UX**
+  → Streaming으로 부분 로딩 제공
+* **SEO 및 초기 렌더링 보장**
+  → SSR로 초기 HTML 생성
+* **Core Web Vitals 향상**
+  → TTFB, FCP, TTI 개선
+
+---
+
 ## 2025-09-17 4주차
 
 ### Layouts & Pages
@@ -88,11 +210,6 @@ export default async function BlogPostPage({ params }: { params: { slug: string 
   )
 }
 ```
-
-좋습니다 👍 지금 4주차 정리 문서에 **Dynamic Segments → slug** 부분을 조금 더 확장하면 이해하기 훨씬 쉬워질 거예요.
-slug는 블로그, 상품 상세, 사용자 프로필 등 **데이터 기반 동적 페이지**에서 가장 자주 쓰이는 개념이니까요.
-
-아래처럼 보완 내용을 추가해보면 어떨까요?
 
 ---
 
