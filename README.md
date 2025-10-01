@@ -1,4 +1,67 @@
 # 202130113 노형진
+## 2025-10-01 6주차
+
+#### Next.js 전환(transition)이 느려질 수 있는 원인과 개선 방법
+
+##### 1. **Dynamic routes without `loading.tsx`**
+
+* 문제: 서버 응답을 기다려야 해서 전환 지연 발생
+* 해결: `loading.tsx` 추가 → **즉시 네비게이션 + 로딩 UI 제공**
+
+---
+
+##### 2. **Dynamic segments without `generateStaticParams`**
+
+* 문제: 정적 생성 가능한 라우트를 동적 렌더링으로 처리 → 느려짐
+* 해결: `generateStaticParams` 구현 → **빌드 타임에 정적 생성**
+
+---
+
+##### 3. **Slow networks**
+
+* 문제: 프리패칭 완료 전 클릭 → 로딩 UI 지연
+* 해결: `useLinkStatus` 훅으로 **로딩 인디케이터(스피너, 글리머, 프로그레스바)** 표시
+
+---
+
+##### 4. **Disabling prefetching**
+
+* 문제: `<Link prefetch={false}>` 사용 시 전환 속도 저하
+* 해결: **Hover 시에만 prefetch** → 불필요한 리소스 낭비 줄이면서 성능 유지
+
+---
+
+##### 5. **Hydration not completed**
+
+* 문제: `<Link>`가 클라이언트 컴포넌트라서 **큰 JS 번들 로딩 시 지연**
+* 해결:
+
+  * **Bundle 크기 최적화** (`@next/bundle-analyzer` 활용)
+  * **로직을 서버 컴포넌트로 이동** → 클라이언트 부담 최소화
+
+###### Hydration (하이드레이션) 이란?
+
+1. **정의**
+    * 서버에서 렌더링된 **정적 HTML**에
+      클라이언트 측 **React 자바스크립트 로직을 연결**하여
+      **인터랙티브한 앱**으로 만드는 과정.
+
+2. **동작 원리**
+    1. 서버가 HTML + 최소한의 초기 상태 전달
+    2. 브라우저가 React JS 번들을 다운로드 및 실행
+    3. React가 HTML 구조와 연결(hydrate) → 이벤트 핸들러 활성화  
+
+3. **문제점**
+    * 큰 JS 번들이 필요하면 초기 하이드레이션이 **느려짐**
+    * 하이드레이션 완료 전에는 UI가 보이지만 **동작하지 않는 상태**
+
+4. **Next.js의 개선 방법**
+    * **Selective Hydration**: 필요한 부분만 먼저 하이드레이션
+    * **서버 컴포넌트 활용**: 클라이언트 JS 부담 감소
+    * **번들 최적화**: `@next/bundle-analyzer`로 크기 줄이기
+---
+
+
 ## 2025-09-24 5주차
 #### 6. Linking Between Pages
 
