@@ -1,7 +1,90 @@
 # 202130113 노형진
 ## 2025-10-17 8주차
+#### Server and Client Components
 
+Next.js의 모든 컴포넌트는 기본적으로 **서버 컴포넌트**이며, 상호작용이나 브라우저 API가 필요할 때 `'use client'` 지시어를 사용해 **클라이언트 컴포넌트**로 전환 가능
 
+##### 1. 컴포넌트 사용 기준
+
+* **클라이언트 컴포넌트 (`'use client'`) 사용**
+    * **상태(State)와 이벤트 핸들러** 필요 시 (`useState`, `onClick` 등)
+    * **생명주기 로직** 필요 시 (`useEffect`)
+    * **브라우저 전용 API** 사용 시 (`localStorage`, `window` 등)
+    * **커스텀 훅** 사용 시
+
+* **서버 컴포넌트 사용**
+    * **데이터베이스/API 직접 접근** (데이터 소스와 가깝게)
+    * **API 키 등 민감 정보 보호** (클라이언트에 노출되지 않음)
+    * **클라이언트 JS 번들 크기 감소**
+    * **빠른 초기 렌더링(FCP) 및 스트리밍** 구현
+
+---
+
+##### 2. 렌더링 동작 원리
+
+1.  **서버**: 서버 컴포넌트를 **RSC Payload**라는 특수 데이터 형식으로 렌더링
+2.  **클라이언트 (첫 로딩)**:
+    * 서버가 보낸 **HTML**로 비활성 UI를 즉시 표시
+    * **RSC Payload**를 기반으로 서버/클라이언트 컴포넌트 트리를 재구성
+    * **JS**를 다운로드하여 클라이언트 컴포넌트를 **하이드레이션**(Hydration) → 상호작용 활성화
+3.  **클라이언트 (이후 탐색)**:
+    * 새로운 **RSC Payload**만 가져와 클라이언트에서 렌더링 (HTML 재요청 없음)
+
+---
+
+##### 3. 주요 패턴: 조합(Composition)을 통한 최적화
+
+* 정적인 부분(Layout, Logo)은 **서버 컴포넌트**로 유지
+* 상호작용이 필요한 부분(Search Bar)만 **클라이언트 컴포넌트**로 분리
+* → 불필요한 클라이언트 JS 번들을 줄여 성능 최적화
+
+```tsx
+// app/layout.tsx (Server Component)
+import Search from './search' // Client Component
+import Logo from './logo'     // Server Component
+
+export default function Layout({ children }) {
+  return (
+    <nav>
+      <Logo />
+      <Search />
+    </nav>
+  )
+}
+```
+* 데이터 전달: 서버 → 클라이언트
+
+  - **서버 컴포넌트**가 데이터를 fetching한 후, **클라이언트 컴포넌트**에 `props`를 통해 전달하는 핵심 패턴
+  - 이를 통해 데이터 로딩 로직은 서버에 유지하면서, 상호작용이 필요한 부분만 클라이언트에서 처리 가능
+  - **주의**: 서버에서 클라이언트로 전달되는 props는 반드시 **직렬화(Serializable)** 가능해야 함
+
+<!-- end list -->
+
+```tsx
+// app/[id]/page.tsx (Server Component)
+import LikeButton from '@/app/ui/like-button';
+import { getPost } from '@/lib/data';
+
+export default async function Page({ params }) {
+  // 1. 서버에서 데이터를 가져옴
+  const post = await getPost(params.id);
+  
+  // 2. 가져온 데이터를 클라이언트 컴포넌트에 props로 전달
+  return <LikeButton likes={post.likes} />;
+}
+```
+
+##### Optimistic vs Pessimistic Update
+서버 데이터 변경 요청 후 UI를 언제 업데이트할지에 대한 두 가지 전략
+
+|구분|Pessimistic Update (비관적 업데이트)|Optimistic Update (낙관적 업데이트)|
+|---|---|---|
+|정의|서버의 성공 응답을 받은 후 UI를 업데이트하는 방식|UI를 즉시 업데이트한 후, 서버와 동기화하는 방식|
+|UI 업데이트 시점|서버 응답 후|사용자 액션 즉시|
+|동작 순서|요청 → 로딩 → 서버 응답 확인 → UI 업데이트|UI 즉시 업데이트 → 요청 → (실패 시) UI 롤백|
+|장점|"데이터 정합성 보장, 간단한 구현"|"즉각적인 반응성, 뛰어난 사용자 경험(UX)"|
+|단점|사용자가 기다려야 함 (느린 UX)|"롤백 로직 등 복잡한 구현, 일시적 데이터 불일치 가능성"
+|적합한 경우|"결제, 회원가입 등 데이터 정확성이 중요한 작업"|"좋아요, 댓글 등 실패해도 괜찮고 UX가 중요한 작업"|
 ## 2025-10-01 6주차
 
 #### Next.js 전환(transition)이 느려질 수 있는 원인과 개선 방법
