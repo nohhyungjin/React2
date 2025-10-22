@@ -1,4 +1,71 @@
 # 202130113 노형진
+## 2025-10-22 9주차
+
+##### 서버 컴포넌트를 클라이언트에 전달 (Interleaving)
+
+  * **정의**: 서버 컴포넌트를 클라이언트 컴포넌트의 `props` (특히 `children`)로 전달
+  * **사용 사례**: 클라이언트 상태(`useState`)로 제어되는 `Modal`(클라이언트) 안에, 서버에서 미리 렌더링된 `Cart`(서버) 컴포넌트를 `children`으로 전달
+  * **동작 원리**:
+      * `Cart`와 같은 서버 컴포넌트는 서버에서 미리 렌더링
+      * 클라이언트 컴포넌트(`Modal`)는 이 렌더링된 결과를 `children`으로 받아, 자신이 관리하는 "슬롯(slot)"에 배치
+
+<!-- end list -->
+
+```tsx
+// app/page.tsx (Server Component)
+import Modal from './ui/modal' // Client Component
+import Cart from './ui/cart'   // Server Component
+
+export default function Page() {
+  // Client(Modal) 안에 Server(Cart)를 children으로 전달
+  return (
+    <Modal>
+      <Cart />
+    </Modal>
+  )
+}
+```
+
+-----
+
+##### Context Provider 활용
+
+  * **핵심 규칙**: React Context는 서버 컴포넌트에서 미지원
+  * **해결책**:
+    1.  Context Provider를 **클라이언트 컴포넌트**로 생성 (`'use client'`)
+    2.  이 Provider를 루트 `layout.tsx` (서버 컴포넌트) 등에서 import 하여 `children`을 포함
+  * **최적화**: Provider는 컴포넌트 트리에서 가능한 한 깊게(최대한 안쪽) 배치하는 것이 Next.js 최적화에 유리
+
+<!-- end list -->
+
+```tsx
+// app/theme-provider.tsx (Client Component)
+'use client'
+ 
+import { createContext } from 'react'
+ 
+export const ThemeContext = createContext({})
+ 
+export default function ThemeProvider({ children }) {
+  return <ThemeContext.Provider value="dark">{children}</ThemeContext.Provider>
+}
+
+// app/layout.tsx (Server Component)
+import ThemeProvider from './theme-provider' // Client Component
+
+export default function RootLayout({ children }) {
+  return (
+    <html>
+      <body>
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+-----
+
 ## 2025-10-17 8주차
 #### Server and Client Components
 
