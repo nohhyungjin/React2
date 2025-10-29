@@ -1,4 +1,144 @@
 # 202130113 노형진
+## 2025-10-29 10주차
+
+##### 서드 파티 컴포넌트와 클라이언트 경계
+
+  * **문제점**: `useState`등 클라이언트 전용 기능에 의존하는 서드 파티 컴포넌트 를 서버 컴포넌트에서 직접 사용하면 에러가 발생
+  * **해결책**: 해당 서드 파티 컴포넌트를 import하는 **별도의 클라이언트 컴포넌트** (`'use client'`)로 한 번 감싸서(wrap) export
+  * **결과**: 이렇게 생성한 래퍼(wrapper) 컴포넌트는 서버 컴포넌트 내에서 직접 import하여 안전하게 사용 가능
+
+<!-- end list -->
+
+```tsx
+// app/carousel.tsx (Client Component Wrapper)
+'use client'
+ 
+import { Carousel } from 'acme-carousel'
+ 
+// 'acme-carousel'을 직접 export
+export default Carousel
+```
+
+```tsx
+// app/page.tsx (Server Component)
+import Carousel from './carousel'
+ 
+export default function Page() {
+  return (
+    <div>
+      <p>View pictures</p>
+      {/* 서버 컴포넌트 안에서 사용 가능 */}
+      <Carousel />
+    </div>
+  )
+}
+```
+
+  * **라이브러리 제작자**: 라이브러리를 만들 때 클라이언트 기능에 의존하는 컴포넌트에는 `'use client'` 지시어를 진입점(entry point)에 추가하는 것을 권장
+
+-----
+
+##### 환경 변수 노출 방지 (server-only)
+
+  * **문제점**: 서버 전용 코드(예: `process.env.API_KEY`가 포함된 모듈이 클라이언트 컴포넌트에 실수로 import 가능
+  * **Next.js 기본 동작**: `NEXT_PUBLIC_` 접두사가 없는 환경 변수는 클라이언트 번들에 포함될 때 빈 문자열로 대체되어 API 요청 등이 실패
+  * **해결책**: `server-only` 패키지를 설치하고, 서버에서만 실행되어야 하는 모듈 최상단에 `import 'server-only'`를 추가
+
+<!-- end list -->
+
+```tsx
+// lib/data.js
+import 'server-only'
+ 
+export async function getData() {
+  const res = await fetch('https://external-service.com/data', {
+    headers: {
+      authorization: process.env.API_KEY, // 서버에서만 접근 가능
+    },
+  })
+ 
+  return res.json()
+}
+```
+
+  * **효과**: 이 모듈을 클라이언트 컴포넌트에서 import 하려고 시도하면 **빌드 타임 에러**가 발생하여 실수를 사전에 방지
+  * **반대**: `client-only` 패키지는 `window` 객체 접근 등 클라이언트 전용 로직이 포함된 모듈을 명시하는 데 사용
+
+-----
+
+##### 데이터 페칭 (Data Fetching)
+
+###### 1\. 서버 컴포넌트에서 데이터 페칭
+
+  * **`fetch` API 사용**: 컴포넌트를 `async` 함수로 만들고 `fetch`를 `await`
+
+    ```tsx
+    // app/blog/page.tsx
+    export default async function Page() {
+      const data = await fetch('https://api.vercel.app/blog')
+      const posts = await data.json()
+      
+      return (
+        <ul>
+          {posts.map((post) => (
+            <li key={post.id}>{post.title}</li>
+          ))}
+        </ul>
+      )
+    }
+    ```
+
+  * **ORM/DB 직접 접근**: 서버 컴포넌트는 서버에서 실행되므로, ORM이나 DB 클라이언트를 사용하여 데이터베이스에 직접 안전하게 쿼리
+
+  * **캐싱**: `fetch` 응답은 Next.js가 기본적으로 캐시
+    동적 렌더링(캐시 미사용)이 필요하면 `{ cache: 'no-store' }` 옵션을 사용
+
+###### 2\. 클라이언트 컴포넌트 (React `use` 훅 활용)
+
+  * **동작 방식**: 서버 컴포넌트에서 `await` 없이 데이터 페칭 **Promise**를 생성하여, 클라이언트 컴포넌트에 `props`로 전달
+  * **클라이언트**: `use` 훅을 사용해 전달받은 Promise를 가져옴
+    이 컴포넌트는 `<Suspense>` 바운더리로 감싸야 함
+
+<!-- end list -->
+
+```tsx
+// app/blog/page.tsx (Server Component)
+import Posts from '@/app/ui/posts'
+import { Suspense } from 'react'
+ 
+export default function Page() {
+  // Promise를 바로 전달 (await 안 함)
+  const posts = getPosts()
+ 
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Posts posts={posts} />
+    </Suspense>
+  )
+}
+```
+
+```tsx
+// app/ui/posts.tsx (Client Component)
+'use client'
+import { use } from 'react'
+ 
+export default function Posts({ posts }: { posts: Promise<{ id: string; title: string }[]> }) {
+  // Promise가 resolve될 때까지 use 훅이 대기
+  const allPosts = use(posts)
+ 
+  return (
+    <ul>
+      {allPosts.map((post) => (
+        <li key={post.id}>{post.title}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+
+
 ## 2025-10-22 9주차
 
 ##### 서버 컴포넌트를 클라이언트에 전달 (Interleaving)
