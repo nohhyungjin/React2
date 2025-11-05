@@ -1,4 +1,189 @@
 # 202130113 노형진
+## 2025-11-05 11주차
+
+##### 데이터 페칭 (Data Fetching)
+
+###### 1\. 서버 컴포넌트에서 데이터 페칭
+
+서버 컴포넌트에서는 다음 두 가지 방법을 사용해 데이터를 페칭 가능
+
+  * `fetch` API 사용
+  * ORM 또는 데이터베이스 직접 접근
+
+-----
+
+**`fetch` API 사용**
+
+`fetch` API로 데이터를 페칭하려면, 컴포넌트를 `async` 함수로 만들고 `fetch` 호출을 `await`
+
+```tsx
+// app/blog/page.tsx
+export default async function Page() {
+  const data = await fetch('https://api.vercel.app/blog')
+  const posts = await data.json()
+  return (
+    <ul>
+      {posts.map((post) => (
+        <li key={post.id}>{post.title}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+  * **알아둘 점**:
+      * `fetch` 응답은 기본적으로 캐시되지 않음
+      * 하지만 Next.js는 라우트를 \*\*사전 렌더링(pre-render)\*\*하며 성능 향상을 위해 출력을 캐시
+      * **동적 렌더링**을 사용하려면 `{ cache: 'no-store' }` 옵션 사용
+      * 개발 중에는 `fetch` 호출을 로깅하여 가시성과 디버깅을 향상 가능
+
+-----
+
+**ORM 또는 데이터베이스 사용**
+
+서버 컴포넌트는 서버에서 렌더링되므로, ORM이나 데이터베이스 클라이언트를 사용해 안전하게 데이터베이스 쿼리를 실행 가능
+
+컴포넌트를 `async` 함수로 만들고 호출을 `await`
+
+```tsx
+// app/blog/page.tsx
+import { db, posts } from '@/lib/db'
+ 
+export default async function Page() {
+  const allPosts = await db.select().from(posts)
+  return (
+    <ul>
+      {allPosts.map((post) => (
+        <li key={post.id}>{post.title}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+-----
+
+###### 2\. 클라이언트 컴포넌트에서 데이터 페칭
+
+클라이언트 컴포넌트에서는 다음 두 가지 방법으로 데이터를 페칭 가능
+
+  * React의 `use` 훅 사용
+  * `SWR` 또는 `React Query` 같은 커뮤니티 라이브러리 사용
+
+-----
+
+**React `use` 훅을 활용한 데이터 스트리밍**
+
+React의 `use` 훅을 사용해 서버에서 클라이언트로 데이터를 **스트리밍(stream)** 가능
+서버 컴포넌트에서 데이터를 페칭하고, `await` 없이 **Promise**를 클라이언트 컴포넌트에 `props`로 전달
+
+```tsx
+// app/blog/page.tsx
+import Posts from '@/app/ui/posts'
+import { Suspense } from 'react'
+ 
+export default function Page() {
+  // 데이터 페칭 함수를 await하지 않음
+  const posts = getPosts()
+ 
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <Posts posts={posts} />
+    </Suspense>
+  )
+}
+```
+
+그리고 클라이언트 컴포넌트에서 `use` 훅을 사용해 Promise를 읽음
+
+```tsx
+// app/ui/posts.tsx
+'use client'
+import { use } from 'react'
+ 
+export default function Posts({
+  posts,
+}: {
+  posts: Promise<{ id: string; title: string }[]>
+}) {
+  // Promise가 resolve될 때까지 use 훅이 대기
+  const allPosts = use(posts)
+ 
+  return (
+    <ul>
+      {allPosts.map((post) => (
+        <li key={post.id}>{post.title}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+  * **동작**: 위 예시에서 `<Posts>` 컴포넌트는 `<Suspense>` 바운더리로 감싸져 있음
+  * Promise가 resolve되는 동안 `fallback` UI가 표시됨을 의미
+
+-----
+
+**커뮤니티 라이브러리 (SWR 등)**
+
+`SWR`이나 `React Query` 같은 커뮤니티 라이브러리를 사용해 클라이언트 컴포넌트에서 데이터를 페칭
+이 라이브러리들은 캐싱, 스트리밍 등을 위한 자체 문법 존재 (SWR 예시)
+
+```tsx
+// app/blog/page.tsx
+'use client'
+import useSWR from 'swr'
+ 
+const fetcher = (url) => fetch(url).then((r) => r.json())
+ 
+export default function BlogPage() {
+  const { data, error, isLoading } = useSWR(
+    'https://api.vercel.app/blog',
+    fetcher
+  )
+ 
+  if (isLoading) return <div>Loading...</div>
+  if (error) return <div>Error: {error.message}</div>
+ 
+  return (
+    <ul>
+      {data.map((post: { id: string; title: string }) => (
+        <li key={post.id}>{post.title}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+-----
+
+##### 요청 중복 제거 및 데이터 캐시
+
+`fetch` 요청을 중복 제거하는 한 가지 방법은 **요청 메모이제이션(request memoization)**
+단일 렌더링 패스 내에서 동일한 URL과 옵션을 사용하는 `GET` 또는 `HEAD`의 `fetch` 호출이 하나의 요청으로 결합
+자동으로 발생, `fetch`에 Abort signal을 전달하여 옵트아웃 가능
+
+  * 요청 메모이제이션은 **요청 생명주기**에 한정
+
+Next.js의 \*\*데이터 캐시(Data Cache)\*\*를 사용(예: `fetch` 옵션에 `cache: 'force-cache'` 설정)하여 `fetch` 요청을 중복 제거 가능
+
+  * 데이터 캐시는 현재 렌더링 패스 및 들어오는 요청 간에 데이터를 공유 가능
+
+만약 `fetch`를 사용하지 않고 ORM이나 데이터베이스를 직접 사용한다면, React의 `cache` 함수로 데이터 접근 가능
+
+```tsx
+// app/lib/data.ts
+import { cache } from 'react'
+import { db, posts, eq } from '@/lib/db'
+ 
+export const getPost = cache(async (id: string) => {
+  const post = await db.query.posts.findFirst({
+    where: eq(posts.id, parseInt(id)),
+  })
+})
+```
+
+---
 ## 2025-10-29 10주차
 
 ##### 서드 파티 컴포넌트와 클라이언트 경계
