@@ -1,4 +1,221 @@
 # 202130113 노형진
+## 2025-11-12 12주차
+
+##### 스트리밍 및 데이터 페칭 패턴
+
+서버 컴포넌트에서 느린 데이터 요청이 있으면 전체 라우트 렌더링이 차단(block) 가능성
+
+**스트리밍**은 페이지의 HTML을 작은 청크(chunk)로 나누어 서버에서 클라이언트로 점진적으로 전송하는 기술
+
+###### 1\. 스트리밍 (Streaming)
+
+스트리밍을 구현하는 두 가지 방법
+
+  * **`loading.js` 파일 사용**
+
+      * 같은 폴더의 `page.js` **전체**를 스트리밍
+      * 탐색 시 사용자는 즉시 레이아웃과 `loading.js`의 UI(폴백)를 보게 되며, `page.js` 렌더링이 완료되면 새 콘텐츠로 자동 교체
+      * 내부적으로 `loading.js`는 `page.js`와 하위 Children을 `<Suspense>` 바운더리로 감쌈
+
+    <!-- end list -->
+
+    ```tsx
+    // app/blog/loading.tsx
+    export default function Loading() {
+      // 스켈레톤 UI 등 로딩 UI 정의
+      return <div>Loading...</div>
+    }
+    ```
+
+  * **`<Suspense>` 컴포넌트 사용**
+
+      * 페이지의 **특정 부분**만 더 세분화하여(granular) 스트리밍 가능
+      * 즉시 표시될 정적 콘텐츠(예: 헤더)와 `<Suspense>`로 감싸 스트리밍할 동적 콘텐츠(예: 블로그 목록)를 분리 가능
+
+    <!-- end list -->
+
+    ```tsx
+    // app/blog/page.tsx
+    import { Suspense } from 'react'
+    import BlogList from '@/components/BlogList'
+    import BlogListSkeleton from '@/components/BlogListSkeleton'
+
+    export default function BlogPage() {
+      return (
+        <div>
+          {/* 이 콘텐츠는 즉시 전송됨 */}
+          <header>
+            <h1>Welcome to the Blog</h1>
+          </header>
+          <main>
+            {/* Suspense로 감싼 부분은 데이터가 준비될 때 스트리밍됨 */}
+            <Suspense fallback={<BlogListSkeleton />}>
+              <BlogList />
+            </Suspense>
+          </main>
+        </div>
+      )
+    }
+    ```
+
+-----
+
+###### 2\. 순차적 데이터 페칭 (Sequential Data Fetching)
+
+한 요청이 다른 요청의 데이터에 의존할 때 발생하는 **워터폴(waterfall)** 현상
+예: `<Playlists>`는 `getArtist`가 완료되어 `artistID`를 전달받아야만 데이터를 페칭
+
+```tsx
+// app/artist/[username]/page.tsx
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ username: string }>
+}) {
+  const { username } = await params
+  // 1. 첫 번째 요청을 기다림
+  const artist = await getArtist(username)
+ 
+  return (
+    <>
+      <h1>{artist.name}</h1>
+      {/* 2. 첫 요청 완료 후, 두 번째 요청을 스트리밍 */}
+      <Suspense fallback={<div>Loading...</div>}>
+        <Playlists artistID={artist.id} />
+      </Suspense>
+    </>
+  )
+}
+ 
+async function Playlists({ artistID }: { artistID: string }) {
+  // 3. 두 번째 요청 실행
+  const playlists = await getArtistPlaylists(artistID)
+ 
+  return (
+    <ul>
+      {playlists.map((playlist) => (
+        <li key={playlist.id}>{playlist.name}</li>
+      ))}
+    </ul>
+  )
+}
+```
+
+  * **참고**: 이 방식은 `getArtist`가 완료될 때까지 페이지 전체가 대기 상태, 이를 방지하고 즉각적인 로딩 UI를 보여주려면 `loading.js` 파일을 사용 가능
+
+-----
+
+###### 3\. 병렬 데이터 페칭 (Parallel Data Fetching)
+
+라우트 내에서 서로 의존하지 않는 여러 데이터 요청을 **동시에** 시작하는 방식
+
+  * **순차적 방식 (비권장)**: `async/await`를 연달아 사용하면, `getArtist`가 끝나야 `getAlbums`가 시작
+
+    ```tsx
+    // app/artist/[username]/page.tsx
+    import { getArtist, getAlbums } from '@/app/lib/data'
+
+    export default async function Page({ params }) {
+      const { username } = await params
+      // 이 요청들이 순차적으로 실행됨 (워터폴)
+      const artist = await getArtist(username)
+      const albums = await getAlbums(username)
+      return <div>{artist.name}</div>
+    }
+    ```
+
+  * **병렬 방식 (권장)**: 여러 함수를 `await` 없이 먼저 호출(요청 시작)하고, `Promise.all`을 사용해 모든 요청이 완료될 때까지 한 번에 대기
+
+    ```tsx
+    // app/artist/[username]/page.tsx
+    async function getArtist(username: string) { /* ... */ }
+    async function getAlbums(username: string) { /* ... */ }
+
+    export default async function Page({
+      params,
+    }: {
+      params: Promise<{ username: string }>
+    }) {
+      const { username } = await params
+
+      // 1. 두 요청을 동시에 시작
+      const artistData = getArtist(username)
+      const albumsData = getAlbums(username)
+
+      // 2. 두 요청이 모두 완료될 때까지 기다림
+      const [artist, albums] = await Promise.all([artistData, albumsData])
+
+      return (
+        <>
+          <h1>{artist.name}</h1>
+          <Albums list={albums} />
+        </>
+      )
+    }
+    ```
+
+  * **참고**: `Promise.all`은 요청 중 하나라도 실패하면 전체가 실패, 이를 방지하려면 `Promise.allSettled`를 사용할 수 있음
+
+-----
+
+###### 4\. 데이터 프리로딩 (Preloading Data)
+
+필수적인 데이터 요청을 다른 비동기 작업(블로킹 요청) *전에* 미리 시작하는 패턴
+예: `preload(id)`를 먼저 호출하여 `getItem` 요청을 시작하고, 그 다음 `await checkIsAvailable()`를 실행
+
+```tsx
+// app/item/[id]/page.tsx
+import { getItem, checkIsAvailable } from '@/lib/data'
+ 
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  const { id } = await params
+  
+  // 1. getItem() 요청을 미리 "시작" (await 안 함)
+  preload(id)
+  
+  // 2. 다른 비동기 작업을 기다림
+  const isAvailable = await checkIsAvailable()
+ 
+  // 3. 2번이 완료되면 렌더링. <Item>은 1번의 결과를 사용
+  return isAvailable ? <Item id={id} /> : null
+}
+ 
+const preload = (id: string) => {
+  // void는 undefined를 반환 (await 없이 함수 실행)
+  void getItem(id)
+}
+ 
+export async function Item({ id }: { id: string }) {
+  // preload에서 시작된 요청의 결과를 가져옴
+  const result = await getItem(id)
+  // ...
+}
+```
+
+  * **유틸리티 함수**: React의 `cache` 함수와 `server-only` 패키지를 사용해, 캐시되고 서버 전용인 재사용 가능한 유틸리티 함수를 만들 수 있음
+
+    ```tsx
+    // utils/get-item.ts
+    import { cache } from 'react'
+    import 'server-only'
+    import { getItem as fetchItem } from '@/lib/data'
+
+    export const preload = (id: string) => {
+      void fetchItem(id)
+    }
+
+    // React의 cache로 동일 요청 중복 제거
+    export const getItem = cache(async (id: string) => {
+      // ...
+      return fetchItem(id)
+    })
+    ```
+
+---
 ## 2025-11-05 11주차
 
 ##### 데이터 페칭 (Data Fetching)
