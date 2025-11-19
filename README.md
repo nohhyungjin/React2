@@ -1,4 +1,121 @@
 # 202130113 노형진
+
+## 2025-11-19 13주차
+
+##### CSS 스타일링 (CSS Styling)
+
+Next.js는 Tailwind CSS, CSS Modules, Global CSS, External Stylesheets 등 다양한 스타일링 방식을 지원함
+
+###### 1\. Tailwind CSS
+
+**Utility-first** CSS 프레임워크로, 사전 정의된 유틸리티 클래스를 조합하여 빠르게 디자인을 구축할 수 있음
+
+  * **설치**: `pnpm add -D tailwindcss @tailwindcss/postcss`
+  * **설정**: `postcss.config.mjs`에 플러그인 추가
+  * **적용**: Global CSS 파일에 `@import 'tailwindcss';` 추가 후 루트 레이아웃에서 import
+
+<!-- end list -->
+
+```tsx
+// app/page.tsx
+export default function Page() {
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-between p-24">
+      <h1 className="text-4xl font-bold">Welcome to Next.js!</h1>
+    </main>
+  )
+}
+```
+
+-----
+
+###### 2\. CSS Modules
+
+CSS 클래스 이름을 고유하게 생성하여 **로컬 스코프(Locally Scope)** 를 보장하는 방식  
+다른 파일에서 동일한 클래스 이름을 사용해도 충돌하지 않음
+
+  * **규칙**: 파일명 확장자를 `.module.css`로 생성
+  * **사용**: 스타일 파일을 객체(`styles`)로 import하여 사용
+
+<!-- end list -->
+
+```tsx
+// app/blog/page.tsx
+import styles from './blog.module.css'
+ 
+export default function Page() {
+  return <main className={styles.blog}></main>
+}
+```
+
+-----
+
+###### 3\. Global CSS (전역 스타일)
+
+애플리케이션의 모든 라우트에 공통적으로 적용되는 스타일
+
+  * **생성**: `app/globals.css` 등의 파일 생성
+  * **적용**: 루트 레이아웃(`app/layout.tsx`)에서 import
+  * **권장 사항**: Tailwind의 기본 스타일이나 Reset CSS 용도로 사용하고, 컴포넌트별 스타일링은 Tailwind나 CSS Modules 사용을 권장
+
+<!-- end list -->
+
+```tsx
+// app/layout.tsx
+import './globals.css'
+ 
+export default function RootLayout({ children }) {
+  return <html><body>{children}</body></html>
+}
+```
+
+-----
+
+###### 4\. 외부 스타일시트 (External Stylesheets) & Bootstrap
+
+외부 패키지에서 제공하는 스타일시트를 `app` 디렉토리 내 어디서든 import 하여 사용 가능
+
+**Bootstrap 활용 상세**
+
+  * **개요**: 트위터에서 개발한 오픈소스 프론트엔드 프레임워크로, 강력한 반응형 그리드 시스템과 사전 디자인된 UI 컴포넌트(버튼, 폼, 네비게이션 등)를 제공하여 빠른 개발을 도움
+
+  * **설치 및 적용**:
+
+    1.  패키지 설치: `npm install bootstrap`
+    2.  루트 레이아웃에서 CSS 파일 import
+
+    <!-- end list -->
+
+    ```tsx
+    // app/layout.tsx
+    import 'bootstrap/dist/css/bootstrap.css' // 부트스트랩 CSS 적용
+
+    export default function RootLayout({
+      children,
+    }: {
+      children: React.ReactNode
+    }) {
+      return (
+        <html lang="en">
+          {/* 부트스트랩 클래스 사용 가능 */}
+          <body className="container">{children}</body>
+        </html>
+      )
+    }
+    ```
+
+  * **특징**:
+
+      * **반응형 그리드**: `container`, `row`, `col-md-6` 등의 클래스로 다양한 기기 화면에 맞는 레이아웃을 쉽게 구성     \* **유틸리티 클래스**: 마진(`m-3`), 패딩(`p-2`), 텍스트 정렬(`text-center`) 등 유틸리티 클래스 제공 (Tailwind와 유사하지만 클래스명이 다름)
+      * **React 호환성**: 단순 CSS import 외에도 `react-bootstrap` 같은 라이브러리를 사용하면 Bootstrap 컴포넌트를 React 컴포넌트 형태로 더 쉽게 제어 가능
+
+-----
+
+###### 5\. 순서 및 병합 (Ordering and Merging)
+
+  * Next.js는 프로덕션 빌드 시 CSS 파일을 자동으로 청크(병합)하여 최적화함
+  * **CSS 적용 우선순위**는 코드 내에서 **import 하는 순서**에 따라 결정됨
+      * 예: `BaseButton` 컴포넌트가 `page.module.css`보다 먼저 import 되었다면, `BaseButton`의 스타일이 먼저 로드됨
 ## 2025-11-12 12주차
 
 ##### 스트리밍 및 데이터 페칭 패턴
